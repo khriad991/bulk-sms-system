@@ -1,0 +1,97 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id               Int                 @id @default(autoincrement())
+  name             String              @db.VarChar(100)
+  email            String              @unique
+  password         String
+  otp              String
+  role             String              @default("user")
+  createAt         DateTime            @default(now()) @db.Timestamp(0)
+  updateAt         DateTime            @default(now()) @updatedAt @db.Timestamp(0)
+  message_template message_template[]
+  smtpConfig       SMTPConfiguration[]
+  smsQueue         SMSQueue[]
+  email_list       email_list[]
+}
+
+model SMTPConfiguration {
+  id       Int        @id @default(autoincrement())
+  name     String     @unique
+  smtpHost String
+  smtpPort Int
+  smtpUser String
+  smtpPass String
+  userId   Int
+  user     user       @relation(fields: [userId], references: [id])
+  createAt DateTime   @default(now())
+  updateAt DateTime   @default(now()) @updatedAt
+  SMSQueue SMSQueue[]
+}
+
+model email_list {
+  id        Int        @id @default(autoincrement())
+  type      email_type
+  name      String
+  all_email Json
+  user      user       @relation(fields: [userId], references: [id])
+  userId    Int
+  createAt  DateTime   @default(now()) @db.Timestamp(0)
+  updateAt  DateTime   @default(now()) @updatedAt @db.Timestamp(0)
+  SMSQueue  SMSQueue[]
+
+  @@unique([name, type])
+}
+
+enum email_type {
+  CC
+  BCC
+}
+
+model SMSQueue {
+  id             Int    @id @default(autoincrement())
+  recipientPhone String
+  status         String @default("pending")
+  message        String
+
+  userId Int
+  user   user @relation(fields: [userId], references: [id])
+
+  smtpId            Int
+  SMTPConfiguration SMTPConfiguration @relation(fields: [smtpId], references: [id])
+
+  email_listId Int
+  email_list   email_list @relation(fields: [email_listId], references: [id])
+
+  messageId        Int
+  message_template message_template @relation(fields: [messageId], references: [id])
+  createAt         DateTime         @default(now()) @db.Timestamp(0)
+  updateAt         DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+
+  @@index([userId])
+}
+
+model message_template {
+  id       Int        @id @default(autoincrement())
+  name     String     @db.VarChar(500)
+  content  String     @db.VarChar(3000)
+  userId   Int
+  user     user       @relation(fields: [userId], references: [id])
+  createAt DateTime   @default(now()) @db.Timestamp(0)
+  updateAt DateTime   @default(now()) @updatedAt @db.Timestamp(0)
+  SMSQueue SMSQueue[]
+
+  @@index([userId])
+}
